@@ -17,7 +17,7 @@ As a User of the Workforce Management Backoffice, I would like to understand wor
 
 Please implement a dashboard that has the structure of the table below:
 
-- dashboard shows each active person (employees and externals)
+- dashboard shows each active person (employees and externals) done
 - we can see utilisation year to date, last twelve months, last three months
 
 | Person     | Past 12 Months | Y2D | May | June | July | Net Earnings Prev Month |

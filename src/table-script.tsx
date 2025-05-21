@@ -56,9 +56,9 @@ const getNetEarningsPrevMonth = (dataRow: SourceDataType): string => {
 };
 
 const tableData: TableDataType[] = (sourceData as unknown as SourceDataType[])
-  .map((dataRow, index) => {
-    const isEmployee = !!dataRow.employees;
-    const isExternal = !!dataRow.externals;
+  .map((dataRow, _) => {
+    const isEmployee = dataRow.employees;
+    const isExternal = dataRow.externals;
 
     if (isEmployee) {
       if (dataRow.employees?.statusAggregation?.status === "Inaktiv")
