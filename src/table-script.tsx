@@ -19,22 +19,6 @@ import type { SourceDataType, TableDataType } from "./types";
  * @prop {number} july - The value for July.
  * @prop {number} netEarningsPrevMonth - The net earnings for the previous month.
  */
-/*
-
-- dashboard shows each active person (employees and externals) 
-- we can see utilisation year to date, last twelve months, last three months 
-
-| Person     | Past 12 Months | Y2D | May | June | July | Net Earnings Prev Month |
-| ---------- | -------------- | --- | --- | ---- | ---- | ----------------------- |
-| Person A   | 89%            | ... | ... | 72%  | ...  | 3500 EUR                |
-| External D | ...            | ... | ... | 72%  | ...  | -1980 EUR               |
-
-### ✅ Acceptance Criteria
-
-- All fields that fetch data (e.g. Net earnings prev Month) are fetched correctly for each cell
-- All mathematical operations are correctly performed and displayed in an intuitive way
-*/
-
 const getPrevMonthKey = (): string => {
   const now = new Date();
   const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -54,51 +38,54 @@ const getNetEarningsPrevMonth = (dataRow: SourceDataType): string => {
   const raw = parseFloat(match?.costs ?? "0");
   return `${raw} €`;
 };
+// Predicate helpers these functions are used to filter out unwanted data rows so we dont get data inconsistencies
+// These functions check if the data row is inactive or has invalid names.
+const isInactiveEmployee = (dataRow: SourceDataType): boolean =>
+  !!dataRow.employees &&
+  dataRow.employees.statusAggregation?.status === "Inaktiv";
+const isInactiveExternal = (dataRow: SourceDataType): boolean =>
+  !!dataRow.externals && dataRow.externals.status !== "active";
+const hasValidName = (person: any): boolean =>
+  Boolean(person?.firstname && person?.lastname);
+const isValidRow = (dataRow: SourceDataType): boolean => {
+  const person = dataRow.employees ?? dataRow.externals;
+  return (
+    !isInactiveEmployee(dataRow) &&
+    !isInactiveExternal(dataRow) &&
+    hasValidName(person)
+  );
+};
 
+// this function extracts the person object from the data row so we can manage the data more easily
+const extractPerson = (dataRow: SourceDataType) =>
+  dataRow.employees ?? dataRow.externals;
+
+// Refactored map block using functional style for better readability
 const tableData: TableDataType[] = (sourceData as unknown as SourceDataType[])
-  .map((dataRow, _) => {
-    const isEmployee = dataRow.employees;
-    const isExternal = dataRow.externals;
+  .filter(isValidRow)
+  .map((dataRow) => {
+    const person = extractPerson(dataRow);
+    const util = person?.workforceUtilisation;
 
-    if (isEmployee) {
-      if (dataRow.employees?.statusAggregation?.status === "Inaktiv")
-        return null;
-    } else if (isExternal) {
-      if (dataRow.externals?.status !== "active") return null;
-    } else {
-      return null;
-    }
-
-    const person = isEmployee ? dataRow.employees! : dataRow.externals!;
-    const util = person.workforceUtilisation;
-
-    // parseRate function to convert the rate to a percentage string
-    // and format it to one decimal place
-    // if the value is undefined, it returns "0%" which is the default value
-
-    const parseRate = (value: string | undefined): string =>
+    const parseRate = (value?: string): string =>
       value ? `${(parseFloat(value) * 100).toFixed(1)}%` : "0%";
 
-    const lastThreeMonths = util?.lastThreeMonthsIndividually ?? [];
+    const getMonthRate = (month: string) =>
+      parseRate(
+        util?.lastThreeMonthsIndividually?.find((m) => m.month === month)
+          ?.utilisationRate
+      );
 
-    // the values are sent directly from the tableData to the parseRate function to convert them to a percentage string
-    // and checks if the value is undefined, it returns "0%"
-    const row: TableDataType = {
-      person: `${person?.firstname} ${person?.lastname}`,
+    if (!person) return null;
+    return {
+      person: `${person.firstname} ${person.lastname}`,
       past12Months: parseRate(util?.utilisationRateLastTwelveMonths),
       y2d: parseRate(util?.utilisationRateYearToDate),
-      may: parseRate(
-        lastThreeMonths.find((m) => m.month === "May")?.utilisationRate
-      ),
-      june: parseRate(
-        lastThreeMonths.find((m) => m.month === "June")?.utilisationRate
-      ),
-      july: parseRate(
-        lastThreeMonths.find((m) => m.month === "July")?.utilisationRate
-      ),
+      may: getMonthRate("May"),
+      june: getMonthRate("June"),
+      july: getMonthRate("July"),
       netEarningsPrevMonth: getNetEarningsPrevMonth(dataRow),
     };
-    return row;
   })
   .filter((row): row is TableDataType => row !== null);
 
