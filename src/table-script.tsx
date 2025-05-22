@@ -19,25 +19,30 @@ import type { SourceDataType, TableDataType } from "./types";
  * @prop {number} july - The value for July.
  * @prop {number} netEarningsPrevMonth - The net earnings for the previous month.
  */
+
 const getPrevMonthKey = (): string => {
   const now = new Date();
   const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  return `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(
-    2,
-    "0"
-  )}`;
+  const year = prev.getFullYear();
+  const month = prev.getMonth() + 1;
+  const monthString = month < 10 ? "0" + month : "" + month;
+  return `${year}-${monthString}`;
 };
 
 // helper function to get the net earnings for the previous month
 const getNetEarningsPrevMonth = (dataRow: SourceDataType): string => {
   const prevMonthKey = getPrevMonthKey();
-  const earningsArr =
-    (dataRow.employees?.costsByMonth as any)?.potentialEarningsByMonth ?? [];
-
-  const match = earningsArr.find((e: any) => e.month === prevMonthKey);
-  const raw = parseFloat(match?.costs ?? "0");
-  return `${raw} €`;
+  const earnings = (dataRow.employees?.costsByMonth ?? []) as {
+    month: string;
+    costs?: string;
+  }[];
+  const match = earnings.find(
+    (entry: { month: string; costs?: string }) => entry.month === prevMonthKey
+  );
+  const amount = parseFloat(match?.costs || "0");
+  return `${amount} €`;
 };
+
 // Predicate helpers these functions are used to filter out unwanted data rows so we dont get data inconsistencies
 // These functions check if the data row is inactive or has invalid names.
 const isInactiveEmployee = (dataRow: SourceDataType): boolean =>
